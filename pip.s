@@ -13,6 +13,7 @@
 .segment "ZEROPAGE"
 
 pipstep: .res 1, $00
+pipdir: .res 1, $00
 
 .segment "CODE"
 reset:
@@ -84,166 +85,294 @@ load_sprites:
 forever:
 	jmp	forever
 
+
 nmi:
 	lda	#$00		; set the low byte (00) of the RAM address
 	sta	$2003
 	lda	#$02		; set the high byte (02) of the RAM address 
 	sta	$4014		; start the transfer
 
-latch_controller:
-	lda	#$01
-	sta	$4016
-	lda	#$00
-	sta	$4016		; tell both controllers to latch buttons
+	latch_controller:
+		lda	#$01
+		sta	$4016
+		lda	#$00
+		sta	$4016		; tell both controllers to latch buttons
 
 
-read_a:
-	lda	$4016		; player 1 - A
-	and	#%00000001	; only look at bit 0
-	beq	@done		; branch to @done if button is NOT pressed (0)
-@done:
+	read_a:
+		lda	$4016		; player 1 - A
+		and	#%00000001	; only look at bit 0
+		beq	@done		; branch to @done if button is NOT pressed (0)
+	@done:
 
 
-read_b:
-	lda	$4016		; player 1 - B
-	and	#%00000001	; only look at bit 0
-	beq	@done		; branch to @done if button is NOT pressed (0)
+	read_b:
+		lda	$4016		; player 1 - B
+		and	#%00000001	; only look at bit 0
+		beq	@done		; branch to @done if button is NOT pressed (0)
 
-	;; change out tiles for spike pip
-	lda #$09
-	sta $0201
+		;; change out tiles for spike pip
+		lda #$0a
+		sta $0205
 
-	lda #$0a
-	sta $0205
+		lda #$1a
+		sta $0211
 
-	lda #$0b
-	sta $0209
+		lda pipdir
+		cmp #$00
+		beq @stance_right
+		
+		; stance_left
+		lda #%01000000
+		sta $0202
+		sta $0206
+		sta $020a
+		sta $020e
+		sta $0212
+		sta $0216
 
-	lda #$19
-	sta $020d
+		lda #$0b
+		sta $0201
 
-	lda #$1a
-	sta $0211
+		lda #$09
+		sta $0209
 
-	jmp b_is_pressed
-@done:
+		lda #$12
+		sta $020d
 
+		lda #$19
+		sta $0215
 
-	lda #$00
-	sta $0201
+		jmp @spiked
 
-	lda #$01
-	sta $0205
+		@stance_right:
+			lda #$00
+			sta $0202
+			sta $0206
+			sta $020a
+			sta $020e
+			sta $0212
+			sta $0216
 
-	lda #$02
-	sta $0209
+			lda #$09
+			sta $0201
 
-	lda #$13
-	sta $020d
+			lda #$0b
+			sta $0209
 
-	lda #$14
-	sta $0211
+			lda #$19
+			sta $020d
 
+			lda #$12
+			sta $0215
 
-read_select:
-	lda	$4016		; player 1 - Select
-	and	#%00000001	; only look at bit 0
-	beq	@done		; branch to @done if button is NOT pressed (0)
-@done:
-
-
-read_start:
-	lda	$4016		; player 1 - Start
-	and	#%00000001	; only look at bit 0
-	beq	@done		; branch to @done if button is NOT pressed (0)
-@done:
-
-
-read_up:
-	lda	$4016		; player 1 - Up
-	and	#%00000001	; only look at bit 0
-	beq	@done		; branch to @done if button is NOT pressed (0)
-@done:
-
-read_down:
-	lda	$4016		; player 1 - Down
-	and	#%00000001	; only look at bit 0
-	beq	@done		; branch to @done if button is NOT pressed (0)
-@done:
+		@spiked:
 
 
-read_left:	
-	lda	$4016		; player 1 - Left
-	and	#%00000001	; only look at bit 0
-	beq	@done		; branch to @done if button is NOT pressed (0)
-	;; add instructions here to do something when button IS pressed
-	
-	;; move all 4 sprites one pixel to the right by subracting 1
-	lda	$0203		; load sprite 0 X-position
-	sec			; make sure the carry flag is clear
-	sbc	#$01		; a = a - 1
-	sta	$0203		; save sprite 0 X-position
-	sta	$020f		; save sprite 3 X-position
+		jmp b_is_pressed
+	@done:
 
-	lda	$0207		; load sprite 1 X-position
-	sec			; sub one from it
-	sbc	#$01		;  .
-	sta	$0207		; save sprite 1 X-position
-	sta	$0213		; save sprite 4 X-position
+	reset_stance:
+		lda #$01
+		sta $0205
 
-	lda	$020b		; load sprite 2 X-position
-	sec			; sub one from it
-	sbc	#$01		;  .
-	sta	$020b		; save sprite 2 X-position
-	sta	$0217		; save sprite 5 X-position
-@done:
+		lda #$14
+		sta $0211
 
-read_right:
-	lda	$4016		; player 1 - Right
-	and	#%00000001	; only look at bit 0
-	beq	@done		; branch to @done if button is NOT pressed (0)
-	;; add instructions here to do something when button IS pressed
-	
-	lda pipstep
-	asl
-	clc
-	adc pipstep
-	clc
-	adc #$10
-	tax
+		lda pipdir
+		cmp #$00
+		beq @stance_right
+		
+		; stance_left
+		lda #%01000000
+		sta $0202
+		sta $0206
+		sta $020a
+		sta $020e
+		sta $0212
+		sta $0216
 
-	;; move all 4 sprites one pixel to the right by adding 1
-	lda	$0203		; load sprite 0 X-position
-	clc			; make sure the carry flag is clear
-	adc	#$01		; a = a + 1
-	sta	$0203		; save sprite 0 X-position
-	sta	$020f		; save sprite 3 X-position
-	stx $020d		; replace sprite 3 tile with current pipstep
+		lda #$02
+		sta $0201
 
-	lda	$0207		; load sprite 1 X-position
-	clc			; add one to it
-	adc	#$01		;  .
-	sta	$0207		; save sprite 1 X-position
-	sta	$0213		; save sprite 4 X-position
-	inx
-	stx $0211		; replace sprite 4 tile with current pipstep
+		lda #$00
+		sta $0209
 
-	lda	$020b		; load sprite 2 X-position
-	clc			; add one to it
-	adc	#$01		;  .
-	sta	$020b		; save sprite 2 X-position
-	sta	$0217		; save sprite 5 X-position
+		lda #$12
+		sta $020d
 
-	ldx pipstep
-	inx
-	cpx #$03
-	bne @nfrx
-	ldx #$00
-@nfrx:
-	stx pipstep
-@done:
+		lda #$10
+		sta $0215
 
-b_is_pressed:
+		jmp @done
+
+		@stance_right:
+			lda #$00
+			sta $0202
+			sta $0206
+			sta $020a
+			sta $020e
+			sta $0212
+			sta $0216
+
+			lda #$00
+			sta $0201
+
+			lda #$02
+			sta $0209
+
+			lda #$10
+			sta $020d
+
+			lda #$12
+			sta $0215
+
+		@done:
+
+
+
+	read_select:
+		lda	$4016		; player 1 - Select
+		and	#%00000001	; only look at bit 0
+		beq	@done		; branch to @done if button is NOT pressed (0)
+	@done:
+
+
+	read_start:
+		lda	$4016		; player 1 - Start
+		and	#%00000001	; only look at bit 0
+		beq	@done		; branch to @done if button is NOT pressed (0)
+	@done:
+
+
+	read_up:
+		lda	$4016		; player 1 - Up
+		and	#%00000001	; only look at bit 0
+		beq	@done		; branch to @done if button is NOT pressed (0)
+	@done:
+
+	read_down:
+		lda	$4016		; player 1 - Down
+		and	#%00000001	; only look at bit 0
+		beq	@done		; branch to @done if button is NOT pressed (0)
+	@done:
+
+
+	read_left:	
+		lda	$4016		; player 1 - Left
+		and	#%00000001	; only look at bit 0
+		beq	@done		; branch to @done if button is NOT pressed (0)
+		;; add instructions here to do something when button IS pressed
+
+		lda #$01
+		sta pipdir
+
+		lda #%01000000
+		sta $0202
+		sta $0206
+		sta $020a
+		sta $020e
+		sta $0212
+		sta $0216
+
+		lda pipstep
+		asl
+		clc
+		adc pipstep
+		clc
+		adc #$10
+		tax
+
+		stx $0215		; replace sprite 4 tile with current pipstep
+		inx
+		stx $0211		; replace sprite 3 tile with current pipstep
+
+		
+		;; move all 4 sprites one pixel to the right by subracting 1
+		lda	$0203		; load sprite 0 X-position
+		sec			; make sure the carry flag is clear
+		sbc	#$01		; a = a - 1
+		sta	$0203		; save sprite 0 X-position
+		sta	$020f		; save sprite 3 X-position
+
+		lda	$0207		; load sprite 1 X-position
+		sec			; sub one from it
+		sbc	#$01		;  .
+		sta	$0207		; save sprite 1 X-position
+		sta	$0213		; save sprite 4 X-position
+
+		lda	$020b		; load sprite 2 X-position
+		sec			; sub one from it
+		sbc	#$01		;  .
+		sta	$020b		; save sprite 2 X-position
+		sta	$0217		; save sprite 5 X-position
+
+		ldx pipstep
+		inx
+		cpx #$03
+		bne @nfrx
+		ldx #$00
+	@nfrx:
+		stx pipstep
+	@done:
+
+	read_right:
+		lda	$4016		; player 1 - Right
+		and	#%00000001	; only look at bit 0
+		beq	@done		; branch to @done if button is NOT pressed (0)
+		;; add instructions here to do something when button IS pressed
+
+		lda #$00
+		sta pipdir
+
+		lda #$00
+		sta $0202
+		sta $0206
+		sta $020a
+		sta $020e
+		sta $0212
+		sta $0216
+		
+		lda pipstep
+		asl
+		clc
+		adc pipstep
+		clc
+		adc #$10
+		tax
+
+		;; move all 4 sprites one pixel to the right by adding 1
+		lda	$0203		; load sprite 0 X-position
+		clc			; make sure the carry flag is clear
+		adc	#$01		; a = a + 1
+		sta	$0203		; save sprite 0 X-position
+		sta	$020f		; save sprite 3 X-position
+		stx $020d		; replace sprite 3 tile with current pipstep
+
+		lda	$0207		; load sprite 1 X-position
+		clc			; add one to it
+		adc	#$01		;  .
+		sta	$0207		; save sprite 1 X-position
+		sta	$0213		; save sprite 4 X-position
+		inx
+		stx $0211		; replace sprite 4 tile with current pipstep
+
+		lda	$020b		; load sprite 2 X-position
+		clc			; add one to it
+		adc	#$01		;  .
+		sta	$020b		; save sprite 2 X-position
+		sta	$0217		; save sprite 5 X-position
+
+		ldx pipstep
+		inx
+		cpx #$03
+		bne @nfrx
+		ldx #$00
+	@nfrx:
+		stx pipstep
+	@done:
+
+	b_is_pressed:
 
 	rti			; return from interrupt
 
@@ -262,9 +391,9 @@ palette:
 sprites:
 	; Pip Starting Sprite
      ;vert tile pal horiz
-  .byte $a0, $03, $00, $80
-  .byte $a0, $04, $00, $88
-  .byte $a0, $05, $00, $90
+  .byte $a0, $00, $00, $80
+  .byte $a0, $01, $00, $88
+  .byte $a0, $02, $00, $90
   .byte $a8, $13, $00, $80
   .byte $a8, $14, $00, $88
   .byte $a8, $12, $00, $90
